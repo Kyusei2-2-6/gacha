@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#0a0a1a"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Email Sorter"/>
+<title>Email Sorter PRO</title>
+<link rel="manifest" href="manifest.json"/>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #070712;
+  --surface:   #0f1020;
+  --card:      #141428;
+  --border:    #1e2040;
+  --accent:    #4f8ef7;
+  --keep:      #22c55e;
+  --drop:      #ef4444;
+  --skip:      #64748b;
+  --text:      #e2e8f0;
+  --muted:     #4a5568;
+  --mono:      'JetBrains Mono', monospace;
+  --sans:      'Syne', sans-serif;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+/* ── Header ── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.logo-icon { font-size: 20px; }
+.logo-text { font-size: 15px; font-weight: 800; color: var(--accent); letter-spacing: 0.04em; }
+.logo-ver  { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+
+.header-right {
+  display: flex;
+  gap: 8px;
+}
+.icon-btn {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  width: 36px; height: 36px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.icon-btn:active { background: #1e2040; }
+
+/* ── Main scroll area ── */
+main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+/* ── Password row ── */
+.pass-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.pass-input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 14px;
+  padding: 8px 12px;
+  outline: none;
+}
+.pass-input:focus { border-color: var(--accent); }
+
+.btn-sm {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-sm:active { opacity: .8; }
+
+/* ── Email card ── */
+.email-card {
+  background: linear-gradient(135deg, #0f1428 0%, #111830 100%);
+  border: 1px solid #1e3060;
+  border-radius: 16px;
+  padding: 20px 18px 14px;
+  text-align: center;
+}
+
+.email-counter {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.email-text {
+  font-family: var(--mono);
+  font-size: 17px;
+  font-weight: 700;
+  color: #c9d6ff;
+  word-break: break-all;
+  line-height: 1.4;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.copy-email-btn {
+  margin-top: 12px;
+  background: rgba(79,142,247,.12);
+  border: 1px solid rgba(79,142,247,.3);
+  color: var(--accent);
+  border-radius: 8px;
+  padding: 7px 18px;
+  font-size: 13px;
+  font-family: var(--sans);
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+}
+.copy-email-btn:active { background: rgba(79,142,247,.25); }
+
+/* ── Progress ── */
+.progress-wrap {
+  background: var(--border);
+  border-radius: 99px;
+  height: 6px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #818cf8);
+  border-radius: 99px;
+  transition: width .3s ease;
+  width: 0%;
+}
+
+/* ── Action buttons ── */
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 80px 1fr;
+  gap: 10px;
+}
+
+.btn-keep, .btn-drop, .btn-skip {
+  border: none;
+  border-radius: 14px;
+  font-family: var(--sans);
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform .1s, opacity .15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 16px 8px;
+}
+.btn-keep:active, .btn-drop:active, .btn-skip:active { transform: scale(.95); }
+
+.btn-keep {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  color: #fff;
+  font-size: 17px;
+}
+.btn-keep .btn-label { font-size: 18px; }
+.btn-keep .btn-key { font-size: 10px; opacity: .7; font-family: var(--mono); }
+
+.btn-drop {
+  background: linear-gradient(135deg, #b91c1c, #ef4444);
+  color: #fff;
+  font-size: 17px;
+}
+.btn-drop .btn-label { font-size: 18px; }
+.btn-drop .btn-key { font-size: 10px; opacity: .7; font-family: var(--mono); }
+
+.btn-skip {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+}
+.btn-skip .btn-label { font-size: 14px; }
+.btn-skip .btn-key { font-size: 9px; font-family: var(--mono); }
+
+/* ── Undo/Redo ── */
+.undo-row {
+  display: flex;
+  gap: 8px;
+}
+.undo-row button {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 13px;
+  font-family: var(--sans);
+  cursor: pointer;
+}
+.undo-row button:disabled { opacity: .3; cursor: default; }
+.undo-row button:not(:disabled):active { background: #1e2040; }
+
+/* ── Stats ── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.stat-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 6px;
+  text-align: center;
+}
+.stat-num { font-size: 22px; font-weight: 800; font-family: var(--mono); }
+.stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.stat-keep { color: var(--keep); }
+.stat-drop { color: var(--drop); }
+.stat-total { color: var(--accent); }
+
+/* ── Footer actions ── */
+footer {
+  padding: 10px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.btn-export {
+  width: 100%;
+  background: linear-gradient(90deg, #1d4ed8, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.btn-export:active { opacity: .85; }
+
+.status-bar {
+  text-align: center;
+  font-size: 12px;
+  color: var(--accent);
+  font-family: var(--mono);
+  min-height: 18px;
+}
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.7);
+  display: flex; align-items: flex-end;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.hidden { display: none; }
+
+.modal-sheet {
+  width: 100%;
+  background: var(--card);
+  border-radius: 20px 20px 0 0;
+  padding: 20px 20px 36px;
+}
+.modal-handle {
+  width: 40px; height: 4px;
+  background: var(--border);
+  border-radius: 99px;
+  margin: 0 auto 18px;
+}
+.modal-title {
+  font-size: 16px; font-weight: 800; margin-bottom: 14px;
+}
+.modal-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 15px;
+  padding: 12px 14px;
+  font-family: var(--mono);
+  outline: none;
+  margin-bottom: 14px;
+}
+.modal-input:focus { border-color: var(--accent); }
+.modal-btns { display: flex; gap: 10px; }
+.modal-btns button { flex: 1; padding: 13px; border-radius: 10px; font-size: 15px; font-weight: 700; font-family: var(--sans); border: none; cursor: pointer; }
+.modal-ok { background: var(--accent); color: #fff; }
+.modal-cancel { background: var(--surface); color: var(--muted); border: 1px solid var(--border) !important; }
+
+/* ── Export preview panel ── */
+.export-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.8;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+/* ── Panel menu ── */
+.panel-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 90;
+  backdrop-filter: blur(3px);
+}
+.panel-overlay.hidden { display: none; }
+.side-panel {
+  position: fixed; top: 0; right: 0;
+  width: min(320px, 85vw);
+  height: 100dvh;
+  background: var(--card);
+  border-left: 1px solid var(--border);
+  padding: 20px 18px;
+  overflow-y: auto;
+  z-index: 91;
+}
+.panel-title { font-size: 16px; font-weight: 800; margin-bottom: 16px; }
+.panel-section { margin-bottom: 16px; }
+.panel-section-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+.list-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-family: var(--mono);
+  word-break: break-all;
+  line-height: 1.5;
+}
+.list-item .item-meta { color: var(--muted); font-size: 10px; margin-top: 3px; }
+.list-item.keep-item { border-left: 3px solid var(--keep); }
+.list-item.drop-item { border-left: 3px solid var(--drop); }
+.empty-list { color: var(--muted); font-size: 13px; text-align: center; padding: 16px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <span class="logo-icon">✉️</span>
+    <div>
+      <div class="logo-text">EMAIL SORTER PRO</div>
+      <div class="logo-ver">v2.0 · PWA</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="icon-btn" onclick="openPanel()" title="Lihat hasil">📋</button>
+    <button class="icon-btn" onclick="resetSession()" title="Reset">🔄</button>
+  </div>
+</header>
+
+<!-- Main scroll -->
+<main>
+
+  <!-- Password -->
+  <div class="card">
+    <div class="pass-row">
+      <input class="pass-input" id="passInput" type="text" value="Kyusei123" placeholder="Password..."/>
+      <button class="btn-sm" onclick="copyPassword()">Copy PW</button>
+    </div>
+  </div>
+
+  <!-- Load Excel file -->
+  <div class="card" id="loadCard">
+    <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:10px;">
+      Upload file Excel berisi daftar email<br>
+      <span style="font-size:11px;opacity:.7">Support: .xls, .xlsx, .csv · email boleh di kolom mana saja</span>
+    </p>
+    <input id="excelFile" type="file" accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+      style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:12px;padding:10px;outline:none;"/>
+    <div id="fileHint" style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:8px;text-align:center;line-height:1.5;">
+      Pilih file, lalu tekan Muat Email. Sistem akan mengambil semua teks yang formatnya email.
+    </div>
+    <button class="btn-sm" style="width:100%;margin-top:8px;background:#16a34a;" onclick="loadEmails()">
+      📂 Muat Email dari Excel
+    </button>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-wrap">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+
+  <!-- Email card -->
+  <div class="email-card">
+    <div class="email-counter" id="counterText">0 / 0</div>
+    <div class="email-text" id="emailText">— Belum ada email —</div>
+    <button class="copy-email-btn" onclick="copyEmail()">📋 Copy Email</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-num stat-keep" id="keepCount">0</div>
+      <div class="stat-lbl">✅ KEEP</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num stat-drop" id="dropCount">0</div>
+      <div class="stat-lbl">❌ DROP</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num stat-total" id="totalCount">0</div>
+      <div class="stat-lbl">Total</div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn-keep" onclick="keepEmail()">
+      <span class="btn-label">✅ KEEP</span>
+      <span class="btn-key">[K]</span>
+    </button>
+    <button class="btn-skip" onclick="skipEmail()">
+      <span class="btn-label">⏭</span>
+      <span class="btn-key">SKIP</span>
+    </button>
+    <button class="btn-drop" onclick="dropEmail()">
+      <span class="btn-label">❌ DROP</span>
+      <span class="btn-key">[D]</span>
+    </button>
+  </div>
+
+  <!-- Undo / Redo -->
+  <div class="undo-row">
+    <button id="btnUndo" onclick="undo()" disabled>↩ Undo</button>
+    <button id="btnRedo" onclick="redo()" disabled>↪ Redo</button>
+  </div>
+
+</main>
+
+<!-- Footer -->
+<footer>
+  <button class="btn-export" onclick="exportData()">✅ SELESAI & EXPORT (Download CSV)</button>
+  <div class="status-bar" id="statusBar">Siap digunakan</div>
+</footer>
+
+<!-- Hasil popup -->
+<div class="modal-overlay hidden" id="hasilModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Akun dapat karakter apa?</div>
+    <input class="modal-input" id="hasilInput" type="text" placeholder="Ketik hasil reroll..."/>
+    <div class="modal-btns">
+      <button class="modal-ok" id="hasilOkBtn">✔ OK</button>
+      <button class="modal-cancel" onclick="cancelHasil()">✖ Batal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Side panel hasil -->
+<div class="panel-overlay hidden" id="panelOverlay" onclick="closePanel()"></div>
+<div class="side-panel" id="sidePanel" style="display:none">
+  <div class="panel-title">📋 Hasil Sorting</div>
+
+  <div class="panel-section">
+    <div class="panel-section-title">✅ KEEP (<span id="panelKeepCount">0</span>)</div>
+    <div id="panelKeepList"><div class="empty-list">Belum ada</div></div>
+  </div>
+
+  <div class="panel-section">
+    <div class="panel-section-title">❌ DROP (<span id="panelDropCount">0</span>)</div>
+    <div id="panelDropList"><div class="empty-list">Belum ada</div></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════ STATE ═══════════════
+let emails = [];
+let currentIndex = 0;
+let keepData = [];
+let dropData = [];
+let historyStack = [];
+let redoStack = [];
+let hasilResolve = null;
+
+// ═══════════════ STORAGE ═══════════════
+function saveState() {
+  try {
+    localStorage.setItem('emailSorterState', JSON.stringify({
+      emails, currentIndex, keepData, dropData
+    }));
+  } catch(e) {}
+}
+
+function loadStoredState() {
+  try {
+    const raw = localStorage.getItem('emailSorterState');
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    emails = d.emails || [];
+    currentIndex = d.currentIndex || 0;
+    keepData = d.keepData || [];
+    dropData = d.dropData || [];
+    refreshUI();
+    setStatus('♻️ Session sebelumnya dimuat', 'info');
+  } catch(e) {}
+}
+
+// ═══════════════ UNDO/REDO ═══════════════
+function snapshot() {
+  historyStack.push({
+    emails: [...emails],
+    currentIndex,
+    keepData: keepData.map(d => ({...d})),
+    dropData: dropData.map(d => ({...d}))
+  });
+  redoStack = [];
+  updateUndoRedo();
+}
+
+function undo() {
+  if (!historyStack.length) return setStatus('⚠️ Tidak ada yang di-undo', 'warn');
+  redoStack.push({ emails: [...emails], currentIndex, keepData: keepData.map(d=>({...d})), dropData: dropData.map(d=>({...d})) });
+  const p = historyStack.pop();
+  emails = p.emails; currentIndex = p.currentIndex; keepData = p.keepData; dropData = p.dropData;
+  saveState(); refreshUI(); updateUndoRedo();
+  setStatus('↩️ Undo berhasil');
+}
+
+function redo() {
+  if (!redoStack.length) return setStatus('⚠️ Tidak ada yang di-redo', 'warn');
+  historyStack.push({ emails: [...emails], currentIndex, keepData: keepData.map(d=>({...d})), dropData: dropData.map(d=>({...d})) });
+  const n = redoStack.pop();
+  emails = n.emails; currentIndex = n.currentIndex; keepData = n.keepData; dropData = n.dropData;
+  saveState(); refreshUI(); updateUndoRedo();
+  setStatus('↪️ Redo berhasil');
+}
+
+function updateUndoRedo() {
+  document.getElementById('btnUndo').disabled = historyStack.length === 0;
+  document.getElementById('btnRedo').disabled = redoStack.length === 0;
+}
+
+// ═══════════════ UI ═══════════════
+function refreshUI() {
+  const total = emails.length;
+  const pos = Math.min(currentIndex + 1, total);
+  document.getElementById('counterText').textContent = total ? `${pos} / ${total}` : '0 / 0';
+  document.getElementById('emailText').textContent = total
+    ? (currentIndex < total ? emails[currentIndex] : '— SEMUA SELESAI —')
+    : '— Belum ada email —';
+  document.getElementById('progressFill').style.width = total ? `${(currentIndex / total) * 100}%` : '0%';
+  document.getElementById('keepCount').textContent = keepData.length;
+  document.getElementById('dropCount').textContent = dropData.length;
+  document.getElementById('totalCount').textContent = total;
+}
+
+function setStatus(msg, type = 'info') {
+  const el = document.getElementById('statusBar');
+  el.textContent = msg;
+  const colors = { info: '#4f8ef7', success: '#22c55e', warn: '#f59e0b', error: '#ef4444' };
+  el.style.color = colors[type] || colors.info;
+}
+
+// ═══════════════ LOAD ═══════════════
+function extractEmailsFromRows(rows) {
+  const emailRegex = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+  const found = [];
+  const seen = new Set();
+
+  rows.forEach(row => {
+    Object.values(row || {}).forEach(value => {
+      if (value === null || value === undefined) return;
+      const matches = String(value).match(emailRegex) || [];
+      matches.forEach(email => {
+        const cleaned = email.trim().toLowerCase();
+        if (!seen.has(cleaned)) {
+          seen.add(cleaned);
+          found.push(cleaned);
+        }
+      });
+    });
+  });
+
+  return found;
+}
+
+function setLoadedEmails(lines) {
+  emails = lines;
+  currentIndex = 0;
+  keepData = [];
+  dropData = [];
+  historyStack = [];
+  redoStack = [];
+  saveState();
+  refreshUI();
+  updateUndoRedo();
+  document.getElementById('excelFile').value = '';
+  document.getElementById('loadCard').style.display = 'none';
+  setStatus(`📂 Dimuat: ${emails.length} email`, 'success');
+}
+
+async function loadEmails() {
+  const input = document.getElementById('excelFile');
+  const file = input.files && input.files[0];
+  if (!file) return setStatus('⚠️ Pilih file Excel dulu', 'warn');
+
+  if (typeof XLSX === 'undefined') {
+    return setStatus('⚠️ Library Excel belum termuat. Pastikan internet aktif lalu refresh.', 'error');
+  }
+
+  try {
+    setStatus('⏳ Membaca file Excel...', 'info');
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    let allEmails = [];
+    const seen = new Set();
+
+    workbook.SheetNames.forEach(sheetName => {
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      const rowObjects = rows.map(row => Object.fromEntries(row.map((cell, idx) => [idx, cell])));
+      extractEmailsFromRows(rowObjects).forEach(email => {
+        if (!seen.has(email)) {
+          seen.add(email);
+          allEmails.push(email);
+        }
+      });
+    });
+
+    if (!allEmails.length) return setStatus('⚠️ Tidak menemukan email valid di file', 'warn');
+    setLoadedEmails(allEmails);
+  } catch (err) {
+    console.error(err);
+    setStatus('❌ Gagal baca file. Cek format .xls/.xlsx/.csv', 'error');
+  }
+}
+
+// ═══════════════ ACTIONS ═══════════════
+function copyEmail() {
+  if (currentIndex < emails.length) {
+    navigator.clipboard.writeText(emails[currentIndex])
+      .then(() => setStatus('📋 Email disalin', 'success'))
+      .catch(() => setStatus('⚠️ Gagal copy (coba manual)', 'warn'));
+  }
+}
+
+function copyPassword() {
+  const pw = document.getElementById('passInput').value;
+  navigator.clipboard.writeText(pw)
+    .then(() => setStatus('🔑 Password disalin', 'success'))
+    .catch(() => setStatus('⚠️ Gagal copy password', 'warn'));
+}
+
+function nextEmail() {
+  currentIndex++;
+  saveState();
+  refreshUI();
+}
+
+// Popup untuk hasil reroll
+function askHasil() {
+  return new Promise(resolve => {
+    hasilResolve = resolve;
+    const modal = document.getElementById('hasilModal');
+    const input = document.getElementById('hasilInput');
+    modal.classList.remove('hidden');
+    input.value = '';
+    setTimeout(() => input.focus(), 100);
+    document.getElementById('hasilOkBtn').onclick = () => {
+      const v = input.value.trim();
+      modal.classList.add('hidden');
+      resolve(v);
+    };
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') document.getElementById('hasilOkBtn').click();
+    };
+  });
+}
+
+function cancelHasil() {
+  document.getElementById('hasilModal').classList.add('hidden');
+  if (hasilResolve) hasilResolve(null);
+}
+
+async function keepEmail() {
+  if (currentIndex >= emails.length) return;
+  const hasil = await askHasil();
+  if (hasil === null) return;
+  snapshot();
+  keepData.push({
+    No: currentIndex + 1,
+    Email: emails[currentIndex],
+    Hasil: hasil,
+    Waktu: new Date().toLocaleString('id-ID')
+  });
+  setStatus('✅ Ditandai KEEP', 'success');
+  nextEmail();
+}
+
+function dropEmail() {
+  if (currentIndex >= emails.length) return;
+  snapshot();
+  dropData.push({
+    No: currentIndex + 1,
+    Email: emails[currentIndex],
+    Waktu: new Date().toLocaleString('id-ID')
+  });
+  setStatus('❌ Ditandai DROP', 'error');
+  nextEmail();
+}
+
+function skipEmail() {
+  if (currentIndex >= emails.length) return;
+  snapshot();
+  setStatus('⏭️ Email dilewati', 'warn');
+  nextEmail();
+}
+
+// ═══════════════ EXPORT ═══════════════
+function exportData() {
+  if (!keepData.length && !dropData.length) return setStatus('⚠️ Belum ada data', 'warn');
+  const now = new Date();
+  const ts = now.toLocaleString('id-ID');
+
+  let csv = `EMAIL SORTER PRO - Export\nTanggal: ${ts}\nTotal Email: ${emails.length}\nKEEP: ${keepData.length}\nDROP: ${dropData.length}\n\n`;
+  csv += `=== KEEP ===\nNo,Email,Hasil,Waktu\n`;
+  keepData.forEach(r => { csv += `${r.No},"${r.Email}","${r.Hasil}","${r.Waktu}"\n`; });
+  csv += `\n=== DROP ===\nNo,Email,Waktu\n`;
+  dropData.forEach(r => { csv += `${r.No},"${r.Email}","${r.Waktu}"\n`; });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `email_sorter_${now.toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  setStatus('📁 Export berhasil di-download', 'success');
+}
+
+// ═══════════════ RESET ═══════════════
+function resetSession() {
+  if ((keepData.length || dropData.length) && !confirm('Yakin reset? Data KEEP/DROP akan hilang.')) return;
+  emails = []; currentIndex = 0; keepData = []; dropData = [];
+  historyStack = []; redoStack = [];
+  localStorage.removeItem('emailSorterState');
+  refreshUI();
+  updateUndoRedo();
+  document.getElementById('loadCard').style.display = 'block';
+  setStatus('🔄 Session direset');
+}
+
+// ═══════════════ SIDE PANEL ═══════════════
+function openPanel() {
+  const overlay = document.getElementById('panelOverlay');
+  const panel = document.getElementById('sidePanel');
+  overlay.classList.remove('hidden');
+  panel.style.display = 'block';
+
+  document.getElementById('panelKeepCount').textContent = keepData.length;
+  document.getElementById('panelDropCount').textContent = dropData.length;
+
+  const keepList = document.getElementById('panelKeepList');
+  keepList.innerHTML = keepData.length
+    ? keepData.map(d => `<div class="list-item keep-item">${d.Email}<div class="item-meta">✅ ${d.Hasil} · ${d.Waktu}</div></div>`).join('')
+    : '<div class="empty-list">Belum ada</div>';
+
+  const dropList = document.getElementById('panelDropList');
+  dropList.innerHTML = dropData.length
+    ? dropData.map(d => `<div class="list-item drop-item">${d.Email}<div class="item-meta">❌ ${d.Waktu}</div></div>`).join('')
+    : '<div class="empty-list">Belum ada</div>';
+}
+
+function closePanel() {
+  document.getElementById('panelOverlay').classList.add('hidden');
+  document.getElementById('sidePanel').style.display = 'none';
+}
+
+// ═══════════════ KEYBOARD ═══════════════
+document.addEventListener('keydown', e => {
+  if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+  if (e.key === 'k' || e.key === 'K') keepEmail();
+  if (e.key === 'd' || e.key === 'D') dropEmail();
+  if (e.key === 's' || e.key === 'S') skipEmail();
+  if (e.key === 'c' || e.key === 'C') copyEmail();
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); redo(); }
+});
+
+// ═══════════════ INIT ═══════════════
+const excelInput = document.getElementById('excelFile');
+if (excelInput) {
+  excelInput.addEventListener('change', e => {
+    const file = e.target.files && e.target.files[0];
+    if (file) setStatus(`📎 File dipilih: ${file.name}`, 'info');
+  });
+}
+
+loadStoredState();
+refreshUI();
+updateUndoRedo();
+</script>
+</body>
+</html>
